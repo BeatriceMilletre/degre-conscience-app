@@ -4,13 +4,13 @@ from datetime import datetime
 
 import streamlit as st
 import yaml, pandas as pd, numpy as np, matplotlib.pyplot as plt
-from fpdf import FPDF  # PDF simple (sans accents pour éviter bug Unicode)
+from fpdf import FPDF  # PDF simple (sans accents)
 
 # ====== CONFIG APP ======
 st.set_page_config(page_title="Questionnaire Degré de Conscience – HPI", page_icon="🧭", layout="wide")
 APP_TITLE = "🧭 Questionnaire de Degré de Conscience – Profils HPI"
 
-# ====== CHARGER QUESTIONS ======
+# ====== QUESTIONS ======
 @st.cache_data
 def load_questions():
     with open("questions.yaml", "r", encoding="utf-8") as f:
@@ -21,22 +21,26 @@ LIKERT_MIN = data["likert"]["min"]
 LIKERT_MAX = data["likert"]["max"]
 dimensions = data["dimensions"]
 
-# Index question -> meta
+# Index & utilitaires
 ITEMS = {it["id"]: {"dim_code": d["code"], "dim_label": d["label"], "text": it["text"], "sub": it.get("sub","")}
          for d in dimensions for it in d["items"]}
 ALL_ITEM_IDS = [it["id"] for d in dimensions for it in d["items"]]
 DIM_LABELS = {d["code"]: d["label"] for d in dimensions}
 DIM_ITEMS = {d["code"]: [it["id"] for it in d["items"]] for d in dimensions}
 
-# ====== ENREGISTREMENT SIMPLIFIÉ (mémoire seulement) ======
-if "memory_db" not in st.session_state:
-    st.session_state["memory_db"] = {}  # {code: payload}
+# ====== STOCKAGE PARTAGÉ ENTRE SESSIONS ======
+@st.cache_resource
+def get_store():
+    # dict en mémoire côté serveur, partagé entre sessions tant que l'instance tourne
+    return {}  # {code:str -> payload:dict}
+
+STORE = get_store()
 
 def save_result(code: str, payload: dict):
-    st.session_state["memory_db"][code] = payload
+    STORE[code.upper()] = payload
 
 def fetch_result(code: str):
-    return st.session_state["memory_db"].get(code)
+    return STORE.get(code.upper())
 
 # ====== SCORING ======
 def compute_scores(responses: dict):
@@ -107,24 +111,64 @@ def plot_bars(scores_dim, max_dim):
     ax.set_ylim(0,max(maxv)); ax.set_ylabel("Score"); ax.set_title("Scores par dimension")
     st.pyplot(fig)
 
-# ====== PDF (simple sans accents) ======
+# ====== PDF (robuste) ======
 def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, hawkins, dab):
-    def sanitize(txt): return txt.encode("latin-1", "ignore").decode("latin-1")
-    pdf = FPDF(format="A4", unit="mm"); pdf.set_auto_page_break(auto=True, margin=12)
-    def h1(t): pdf.set_font("Helvetica","B",16); pdf.cell(0,10,sanitize(t),ln=1)
-    def h2(t): pdf.set_font("Helvetica","B",12); pdf.cell(0,8,sanitize(t),ln=1)
-    def p(t): pdf.set_font("Helvetica","",10); pdf.multi_cell(0,6,sanitize(t))
-    pdf.add_page(); h1("Questionnaire de Degre de Conscience - Profils HPI")
-    p(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M')}"); p(f"Score global : {total}/{max_total} | {level}")
-    p(f"Spirale : {spiral}"); p(f"Hawkins : {hawkins}"); p(f"Dabrowski : {dab}")
-    for d in dimensions: p(f"- {d['label']} : {scores_dim[d['code']]}/{max_dim[d['code']]}")
-    buf = io.BytesIO(pdf.output(dest="S").encode("latin-1")); buf.seek(0); return buf
+    # Nettoyage de base (enlève caractères non latin-1)
+    def sanitize(txt: str) -> str:
+        return (txt or "").encode("latin-1", "ignore").decode("latin-1")
 
-def download_button_pdf(buf, filename="rapport.pdf"):
+    pdf = FPDF(format="A4", unit="mm")
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+
+    # Largeur de texte : pleine largeur utile
+    PAGE_W = pdf.w - pdf.l_margin - pdf.r_margin
+
+    def h1(t):
+        pdf.set_font("Helvetica","B",16)
+        pdf.cell(PAGE_W, 10, sanitize(t), ln=1)
+
+    def h2(t):
+        pdf.set_font("Helvetica","B",12)
+        pdf.cell(PAGE_W, 8, sanitize(t), ln=1)
+
+    def p(t):
+        pdf.set_font("Helvetica","",10)
+        pdf.multi_cell(PAGE_W, 6, sanitize(t))  # largeur fixe (évite l’exception)
+
+    # Contenu
+    h1("Questionnaire de Degre de Conscience - Profils HPI")
+    p(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    p("Version : Longue (56 items, echelle 1-7)")
+    p(f"Score global : {total}/{max_total}  |  Niveau global : {level}")
+    p(f"Spirale Dynamique : {spiral}")
+    p(f"Hawkins : {hawkins}")
+    p(f"Dabrowski : {dab}")
+    pdf.ln(2)
+    h2("Scores par dimension")
+    for d in dimensions:
+        code = d["code"]; lbl = d["label"]
+        p(f"- {lbl} : {scores_dim.get(code,0)}/{max_dim.get(code,0)}")
+
+    # Réponses détaillées (page suivante)
+    pdf.add_page()
+    h1("Reponses detaillees")
+    for dim in dimensions:
+        h2(dim["label"])
+        for it in dim["items"]:
+            rid = it["id"]; val = responses.get(rid, "")
+            p(f"Q{rid}. {it['text']} -> {val}")
+
+    # Buffer
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+    buf = io.BytesIO(pdf_bytes); buf.seek(0)
+    return buf
+
+def download_button_pdf(buf, filename="rapport_conscience.pdf"):
     b64 = base64.b64encode(buf.read()).decode()
-    st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">📄 Télécharger le PDF</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">📄 Télécharger le rapport PDF</a>', unsafe_allow_html=True)
 
-# ====== PARAMÈTRES URL ======
+# ====== PARAMS URL ======
 params = st.experimental_get_query_params()
 mode = (params.get("mode") or [""])[0].lower()
 qp_code = (params.get("code") or [""])[0]
@@ -154,11 +198,12 @@ with tabs[0]:
         level = interpret_overall(total)
         spiral, hawkins, dab = map_spiral_hawkins_dabrowski(total)
         code = secrets.token_hex(3).upper()
-        save_result(code, {"responses": responses, "scores_dim": scores_dim,
-                           "total": total, "max_total": max_total,
-                           "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab})
-        st.success(f"Résultats enregistrés avec le code **{code}**")
-        st.info("Communiquez ce code au praticien pour qu’il consulte vos résultats.")
+        save_result(code, {
+            "responses": responses, "scores_dim": scores_dim,
+            "total": total, "max_total": max_total,
+            "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab
+        })
+        st.success(f"Résultats enregistrés avec le code **{code}** (à communiquer au praticien)")
         pdf_buf = build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, hawkins, dab)
         download_button_pdf(pdf_buf, filename=f"rapport_{code}.pdf")
 
@@ -167,26 +212,29 @@ with tabs[1]:
     st.subheader("Consulter les résultats d’un patient")
     code_lookup = st.text_input("Code patient")
     if st.button("Afficher"):
-        rec = fetch_result(code_lookup.strip().upper())
+        rec = fetch_result(code_lookup.strip())
         if not rec:
             st.error("Aucun résultat trouvé.")
         else:
             st.success(f"Résultats pour code {code_lookup.strip().upper()}")
             st.write(f"Score global : {rec['total']}/{rec['max_total']} – {rec['level']}")
             st.write(f"Spirale : {rec['spiral']} | Hawkins : {rec['hawkins']} | Dabrowski : {rec['dab']}")
-            plot_radar(rec["scores_dim"], {c: len(DIM_ITEMS[c])*LIKERT_MAX for c in rec["scores_dim"]})
-            pdf_buf = build_pdf(rec["responses"], rec["scores_dim"],
-                                {c: len(DIM_ITEMS[c])*LIKERT_MAX for c in rec["scores_dim"]},
+            # Graphiques
+            max_dim_view = {c: len(DIM_ITEMS[c]) * LIKERT_MAX for c in rec["scores_dim"].keys()}
+            plot_radar(rec["scores_dim"], max_dim_view)
+            plot_bars(rec["scores_dim"], max_dim_view)
+            # PDF
+            pdf_buf = build_pdf(rec["responses"], rec["scores_dim"], max_dim_view,
                                 rec["total"], rec["max_total"], rec["level"],
                                 rec["spiral"], rec["hawkins"], rec["dab"])
-            download_button_pdf(pdf_buf, filename=f"rapport_{code_lookup}.pdf")
+            download_button_pdf(pdf_buf, filename=f"rapport_{code_lookup.strip().upper()}.pdf")
 
 # ---- Mode patient direct via URL ----
 if mode == "patient":
     st.subheader("Mode patient (via lien)")
-    code_from_link = qp_code or ""
+    code_from_link = (qp_code or "").strip().upper()
     if not code_from_link:
-        st.error("Code manquant dans l’URL.")
+        st.error("Code manquant dans l’URL (paramètre 'code').")
     else:
         with st.form("form_patient"):
             responses = {}
@@ -204,7 +252,9 @@ if mode == "patient":
             scores_dim, max_dim, total, max_total = compute_scores(responses)
             level = interpret_overall(total)
             spiral, hawkins, dab = map_spiral_hawkins_dabrowski(total)
-            save_result(code_from_link.upper(), {"responses": responses, "scores_dim": scores_dim,
-                                                 "total": total, "max_total": max_total,
-                                                 "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab})
-            st.success("Vos réponses ont été enregistrées. Merci !")
+            save_result(code_from_link, {
+                "responses": responses, "scores_dim": scores_dim,
+                "total": total, "max_total": max_total,
+                "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab
+            })
+            st.success("Vos réponses ont été enregistrées. Merci ! Le praticien pourra les consulter avec votre code.")
