@@ -31,7 +31,6 @@ DIM_ITEMS = {d["code"]: [it["id"] for it in d["items"]] for d in dimensions}
 # ====== STOCKAGE PARTAGÉ ENTRE SESSIONS ======
 @st.cache_resource
 def get_store():
-    # dict en mémoire côté serveur, partagé entre sessions tant que l'instance tourne
     return {}  # {code:str -> payload:dict}
 
 STORE = get_store()
@@ -113,7 +112,6 @@ def plot_bars(scores_dim, max_dim):
 
 # ====== PDF (robuste) ======
 def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, hawkins, dab):
-    # Nettoyage de base (enlève caractères non latin-1)
     def sanitize(txt: str) -> str:
         return (txt or "").encode("latin-1", "ignore").decode("latin-1")
 
@@ -121,7 +119,6 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
 
-    # Largeur de texte : pleine largeur utile
     PAGE_W = pdf.w - pdf.l_margin - pdf.r_margin
 
     def h1(t):
@@ -134,9 +131,8 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
 
     def p(t):
         pdf.set_font("Helvetica","",10)
-        pdf.multi_cell(PAGE_W, 6, sanitize(t))  # largeur fixe (évite l’exception)
+        pdf.multi_cell(PAGE_W, 6, sanitize(t))
 
-    # Contenu
     h1("Questionnaire de Degre de Conscience - Profils HPI")
     p(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     p("Version : Longue (56 items, echelle 1-7)")
@@ -150,7 +146,6 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
         code = d["code"]; lbl = d["label"]
         p(f"- {lbl} : {scores_dim.get(code,0)}/{max_dim.get(code,0)}")
 
-    # Réponses détaillées (page suivante)
     pdf.add_page()
     h1("Reponses detaillees")
     for dim in dimensions:
@@ -159,14 +154,17 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
             rid = it["id"]; val = responses.get(rid, "")
             p(f"Q{rid}. {it['text']} -> {val}")
 
-    # Buffer
-    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+    out = pdf.output(dest="S")
+    if isinstance(out, (bytes, bytearray)):
+        pdf_bytes = bytes(out)
+    else:
+        pdf_bytes = out.encode("latin-1", "ignore")
     buf = io.BytesIO(pdf_bytes); buf.seek(0)
     return buf
 
 def download_button_pdf(buf, filename="rapport_conscience.pdf"):
     b64 = base64.b64encode(buf.read()).decode()
-    st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">📄 Télécharger le rapport PDF</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">📄 Télécharger le PDF</a>', unsafe_allow_html=True)
 
 # ====== PARAMS URL ======
 params = st.experimental_get_query_params()
@@ -219,11 +217,9 @@ with tabs[1]:
             st.success(f"Résultats pour code {code_lookup.strip().upper()}")
             st.write(f"Score global : {rec['total']}/{rec['max_total']} – {rec['level']}")
             st.write(f"Spirale : {rec['spiral']} | Hawkins : {rec['hawkins']} | Dabrowski : {rec['dab']}")
-            # Graphiques
             max_dim_view = {c: len(DIM_ITEMS[c]) * LIKERT_MAX for c in rec["scores_dim"].keys()}
             plot_radar(rec["scores_dim"], max_dim_view)
             plot_bars(rec["scores_dim"], max_dim_view)
-            # PDF
             pdf_buf = build_pdf(rec["responses"], rec["scores_dim"], max_dim_view,
                                 rec["total"], rec["max_total"], rec["level"],
                                 rec["spiral"], rec["hawkins"], rec["dab"])
