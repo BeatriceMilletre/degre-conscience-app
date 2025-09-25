@@ -1,0 +1,189 @@
+likert:
+  min: 1
+  max: 7
+  labels: ["1", "2", "3", "4", "5", "6", "7"]
+
+dimensions:
+  - code: SOI
+    label: "Conscience de soi"
+    items:
+      - id: 1
+        text: "Je passe beaucoup de temps à analyser mes propres processus de pensée"
+        sub: "Introspection"
+      - id: 2
+        text: "Je remarque facilement les contradictions dans mes propres raisonnements"
+        sub: "Introspection"
+      - id: 3
+        text: "J'ai une compréhension claire de mes forces et faiblesses cognitives"
+        sub: "Introspection"
+      - id: 4
+        text: "Je ressens parfois une 'sur-stimulation' mentale difficile à gérer"
+        sub: "Introspection"
+      - id: 5
+        text: "Je ressens des émotions d'une intensité qui peut me surprendre moi-même"
+        sub: "Émotions"
+      - id: 6
+        text: "Je peux identifier précisément les nuances subtiles de mes états émotionnels"
+        sub: "Émotions"
+      - id: 7
+        text: "J'éprouve parfois un sentiment de tristesse existentielle sans cause apparente"
+        sub: "Émotions"
+      - id: 8
+        text: "Mes émotions me donnent accès à une compréhension plus profonde de la vie"
+        sub: "Émotions"
+      - id: 9
+        text: "Je remets souvent en question les valeurs dominantes de la société"
+        sub: "Valeurs/Dabrowski"
+      - id: 10
+        text: "J'ai vécu des périodes de crise existentielle intense mais enrichissante"
+        sub: "Valeurs/Dabrowski"
+      - id: 11
+        text: "Je ressens une responsabilité personnelle face aux injustices du monde"
+        sub: "Valeurs/Dabrowski"
+      - id: 12
+        text: "Mon développement personnel passe par des phases de 'désintégration positive'"
+        sub: "Valeurs/Dabrowski"
+      - id: 13
+        text: "Je ressens des conflits internes entre ce que je suis et ce que je pourrais devenir"
+        sub: "Valeurs/Dabrowski"
+      - id: 14
+        text: "J'ai une hiérarchie de valeurs personnelle qui guide mes choix de vie"
+        sub: "Valeurs/Dabrowski"
+      - id: 15
+        text: "Je vis parfois des 'crises développementales' qui me font grandir"
+        sub: "Valeurs/Dabrowski"
+      - id: 16
+        text: "J'aspire à un idéal de personnalité qui dépasse les attentes sociales"
+        sub: "Valeurs/Dabrowski"
+
+  - code: SOC
+    label: "Conscience sociale"
+    items:
+      - id: 17
+        text: "Je capte facilement les émotions non-exprimées des autres"
+        sub: "Empathie"
+      - id: 18
+        text: "Je comprends intuitivement les motivations cachées des comportements"
+        sub: "Empathie"
+      - id: 19
+        text: "Je ressens parfois les émotions d'autrui comme si c'étaient les miennes"
+        sub: "Empathie"
+      - id: 20
+        text: "J'ai tendance à sur-analyser les interactions sociales"
+        sub: "Empathie"
+      - id: 21
+        text: "Je perçois facilement les jeux de pouvoir dans les groupes"
+        sub: "Dynamiques"
+      - id: 22
+        text: "Je comprends que différentes personnes opèrent à partir de systèmes de valeurs distincts"
+        sub: "Dynamiques"
+      - id: 23
+        text: "Je m'adapte naturellement aux différents niveaux de développement de mes interlocuteurs"
+        sub: "Dynamiques"
+      - id: 24
+        text: "Je vois souvent les conflits comme des chocs entre différents stades d'évolution"
+        sub: "Dynamiques"
+      - id: 25
+        text: "Je détecte rapidement l'authenticité ou la manipulation chez les autres"
+        sub: "Intelligence sociale"
+      - id: 26
+        text: "Je comprends les non-dits et les enjeux implicites des situations sociales"
+        sub: "Intelligence sociale"
+      - id: 27
+        text: "J'ai développé des stratégies pour gérer ma différence dans les interactions"
+        sub: "Intelligence sociale"
+      - id: 28
+        text: "Je ressens parfois un décalage profond avec les préoccupations de mon entourage"
+        sub: "Intelligence sociale"
+
+  - code: SYS
+    label: "Conscience élargie"
+    items:
+      - id: 29
+        text: "Je vois naturellement les interconnexions entre différents domaines de la vie"
+        sub: "Systémique"
+      - id: 30
+        text: "Je comprends que l'évolution humaine suit des étapes prévisibles"
+        sub: "Systémique"
+      - id: 31
+        text: "J'intègre facilement des perspectives apparemment contradictoires"
+        sub: "Systémique"
+      - id: 32
+        text: "Je ressens l'urgence d'une évolution collective de la conscience humaine"
+        sub: "Systémique"
+      - id: 33
+        text: "Je ressens une connexion profonde avec la nature et les écosystèmes"
+        sub: "Écologie"
+      - id: 34
+        text: "Les problématiques environnementales m'affectent personnellement"
+        sub: "Écologie"
+      - id: 35
+        text: "Je perçois l'humanité comme partie intégrante d'un système plus vaste"
+        sub: "Écologie"
+      - id: 36
+        text: "J'agis en tenant compte de l'impact sur les générations futures"
+        sub: "Écologie"
+      - id: 37
+        text: "J'ai vécu des expériences de conscience élargie ou d'unité"
+        sub: "Spirituel"
+      - id: 38
+        text: "Je ressens parfois une connexion avec quelque chose qui me dépasse"
+        sub: "Spirituel"
+      - id: 39
+        text: "La recherche de sens est plus importante pour moi que la recherche de bonheur"
+        sub: "Spirituel"
+      - id: 40
+        text: "J'éprouve un sentiment de responsabilité envers l'évolution de la conscience"
+        sub: "Spirituel"
+      - id: 41
+        text: "Je suis à l'aise avec l'incertitude et l'ambiguïté"
+        sub: "Complexité"
+      - id: 42
+        text: "Je peux maintenir simultanément plusieurs perspectives contradictoires"
+        sub: "Complexité"
+      - id: 43
+        text: "Je trouve de la beauté dans la complexité des systèmes"
+        sub: "Complexité"
+      - id: 44
+        text: "J'accepte que certaines questions n’aient pas de réponse définitive"
+        sub: "Complexité"
+
+  - code: HPI
+    label: "Rapport au monde HPI"
+    items:
+      - id: 45
+        text: "Je vis tout avec une intensité particulière (émotions, sensations, pensées)"
+        sub: "Intensité"
+      - id: 46
+        text: "Je suis hypersensible aux injustices, à la souffrance, à la beauté"
+        sub: "Intensité"
+      - id: 47
+        text: "Mon niveau d'exigence envers moi-même est très élevé"
+        sub: "Intensité"
+      - id: 48
+        text: "Je ressens parfois un 'trop-plein' d'informations et d'émotions"
+        sub: "Intensité"
+      - id: 49
+        text: "J'ai souvent l'impression d'être 'sur une autre planète' que les autres"
+        sub: "Décalage"
+      - id: 50
+        text: "J'ai développé des stratégies pour masquer ma différence"
+        sub: "Décalage"
+      - id: 51
+        text: "Je me sens parfois isolé par ma façon de percevoir le monde"
+        sub: "Décalage"
+      - id: 52
+        text: "J'assume de plus en plus ma différence avec l'âge"
+        sub: "Décalage"
+      - id: 53
+        text: "J'ai un besoin impérieux de créer, innover ou transformer"
+        sub: "Créativité"
+      - id: 54
+        text: "Je vois des possibilités là où d'autres voient des obstacles"
+        sub: "Créativité"
+      - id: 55
+        text: "J'ai une vision du potentiel humain qui dépasse la norme actuelle"
+        sub: "Créativité"
+      - id: 56
+        text: "Je me sens porteur d'une mission de changement ou d'évolution"
+        sub: "Créativité"
