@@ -1,5 +1,5 @@
 # app.py
-import io, base64, json, re, secrets
+import io, base64, json, secrets
 from datetime import datetime
 
 import streamlit as st
@@ -110,7 +110,7 @@ def plot_bars(scores_dim, max_dim):
     ax.set_ylim(0,max(maxv)); ax.set_ylabel("Score"); ax.set_title("Scores par dimension")
     st.pyplot(fig)
 
-# ====== PDF (robuste) ======
+# ====== PDF (robuste & aligné) ======
 def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, hawkins, dab):
     def sanitize(txt: str) -> str:
         return (txt or "").encode("latin-1", "ignore").decode("latin-1")
@@ -123,16 +123,20 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
 
     def h1(t):
         pdf.set_font("Helvetica","B",16)
+        pdf.set_x(pdf.l_margin)
         pdf.cell(PAGE_W, 10, sanitize(t), ln=1)
 
     def h2(t):
         pdf.set_font("Helvetica","B",12)
+        pdf.set_x(pdf.l_margin)
         pdf.cell(PAGE_W, 8, sanitize(t), ln=1)
 
     def p(t):
         pdf.set_font("Helvetica","",10)
-        pdf.multi_cell(PAGE_W, 6, sanitize(t))
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(PAGE_W, 6, sanitize(t), align="L")
 
+    # Page 1 — synthèse
     h1("Questionnaire de Degre de Conscience - Profils HPI")
     p(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     p("Version : Longue (56 items, echelle 1-7)")
@@ -146,6 +150,7 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
         code = d["code"]; lbl = d["label"]
         p(f"- {lbl} : {scores_dim.get(code,0)}/{max_dim.get(code,0)}")
 
+    # Page 2 — réponses détaillées
     pdf.add_page()
     h1("Reponses detaillees")
     for dim in dimensions:
@@ -155,10 +160,7 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
             p(f"Q{rid}. {it['text']} -> {val}")
 
     out = pdf.output(dest="S")
-    if isinstance(out, (bytes, bytearray)):
-        pdf_bytes = bytes(out)
-    else:
-        pdf_bytes = out.encode("latin-1", "ignore")
+    pdf_bytes = bytes(out) if isinstance(out, (bytes, bytearray)) else out.encode("latin-1", "ignore")
     buf = io.BytesIO(pdf_bytes); buf.seek(0)
     return buf
 
