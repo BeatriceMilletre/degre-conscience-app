@@ -8,8 +8,8 @@ import yaml, pandas as pd, numpy as np, matplotlib.pyplot as plt
 from fpdf import FPDF  # PDF simple (sans accents)
 
 # ====== CONFIG APP ======
-st.set_page_config(page_title="Questionnaire Degré de Conscience – HPI", page_icon="🧭", layout="wide")
-APP_TITLE = "🧭 Questionnaire de Degré de Conscience – Profils HPI"
+st.set_page_config(page_title="Questionnaire de degré de conscience", page_icon="🧭", layout="wide")
+APP_TITLE = "🧭 Questionnaire de degré de conscience"
 
 # ====== QUESTIONS ======
 @st.cache_data
@@ -43,16 +43,6 @@ def fetch_result(code: str):
 
 # ====== EMAIL (optionnel via st.secrets['smtp']) ======
 def send_email_notification(code: str, total: int, level: str) -> bool:
-    """
-    Envoie un email si st.secrets['smtp'] est configuré.
-    secrets attendus :
-      [smtp]
-      host="smtp.gmail.com"
-      port=587
-      user="votre_email@domaine.com"
-      password="VOTRE_MDP_OU_MDP_APP"
-      to="adresse_de_reception@domaine.com"
-    """
     cfg = st.secrets.get("smtp", None)
     if not cfg:
         return False
@@ -85,7 +75,7 @@ def send_email_notification(code: str, total: int, level: str) -> bool:
         server.quit()
         return True
     except Exception:
-        return False  # on reste silencieux côté UI (pas d'erreur bloquante)
+        return False
 
 # ====== SCORING ======
 def compute_scores(responses: dict):
@@ -123,11 +113,6 @@ def map_spiral_hawkins_dabrowski(total):
     elif 260 < total <= 320: dab = "Niveau IV – Désintégration organisée"
     else: dab = "Niveau V – Intégration secondaire"
     return spiral, hawkins, dab
-
-def interpret_dimension(code, score, max_score):
-    r = score / max_score
-    band = "faible" if r < 0.45 else ("modérée" if r < 0.65 else ("élevée" if r < 0.85 else "très élevée"))
-    return f"{DIM_LABELS.get(code, code)} {band}"
 
 # ====== GRAPHIQUES ======
 def plot_radar(scores_dim, max_dim):
@@ -183,9 +168,9 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
         pdf.multi_cell(PAGE_W, 6, sanitize(t), align="L")
 
     # Page 1 — synthèse
-    h1("Questionnaire de Degre de Conscience - Profils HPI")
+    h1("Questionnaire de degré de conscience")
     p(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    p("Version : Longue (56 items, echelle 1-7)")
+    p("Version : Longue (56 items, échelle 1-7)")
     p(f"Score global : {total}/{max_total}  |  Niveau global : {level}")
     p(f"Spirale Dynamique : {spiral}")
     p(f"Hawkins : {hawkins}")
@@ -198,7 +183,7 @@ def build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, h
 
     # Page 2 — réponses détaillées
     pdf.add_page()
-    h1("Reponses detaillees")
+    h1("Réponses détaillées")
     for dim in dimensions:
         h2(dim["label"])
         for it in dim["items"]:
@@ -251,7 +236,6 @@ with tabs[0]:
             "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab
         })
 
-        # Email auto (silencieux si non configuré)
         mailed = send_email_notification(code, total, level)
         if mailed:
             st.info("📧 Un email vous a été envoyé avec le code de récupération.")
