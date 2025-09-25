@@ -1,6 +1,7 @@
 # app.py
-import io, base64, json, secrets
+import io, base64, json, secrets, smtplib
 from datetime import datetime
+from email.mime.text import MIMEText
 
 import streamlit as st
 import yaml, pandas as pd, numpy as np, matplotlib.pyplot as plt
@@ -32,7 +33,6 @@ DIM_ITEMS = {d["code"]: [it["id"] for it in d["items"]] for d in dimensions}
 @st.cache_resource
 def get_store():
     return {}  # {code:str -> payload:dict}
-
 STORE = get_store()
 
 def save_result(code: str, payload: dict):
@@ -40,6 +40,52 @@ def save_result(code: str, payload: dict):
 
 def fetch_result(code: str):
     return STORE.get(code.upper())
+
+# ====== EMAIL (optionnel via st.secrets['smtp']) ======
+def send_email_notification(code: str, total: int, level: str) -> bool:
+    """
+    Envoie un email si st.secrets['smtp'] est configuré.
+    secrets attendus :
+      [smtp]
+      host="smtp.gmail.com"
+      port=587
+      user="votre_email@domaine.com"
+      password="VOTRE_MDP_OU_MDP_APP"
+      to="adresse_de_reception@domaine.com"
+    """
+    cfg = st.secrets.get("smtp", None)
+    if not cfg:
+        return False
+    try:
+        host = cfg.get("host", "smtp.gmail.com")
+        port = int(cfg.get("port", 587))
+        user = cfg.get("user")
+        pwd  = cfg.get("password")
+        to_addr = cfg.get("to", user)
+
+        if not (user and pwd and to_addr):
+            return False
+
+        body = (
+            f"Un répondant a terminé le questionnaire.\n\n"
+            f"Code de récupération : {code}\n"
+            f"Score global : {total}\n"
+            f"Niveau : {level}\n\n"
+            f"Ouvrez l'app, onglet 'Accès praticien', et entrez ce code pour consulter les résultats."
+        )
+        msg = MIMEText(body, _charset="utf-8")
+        msg["Subject"] = f"[Conscience HPI] Nouveau résultat – Code {code}"
+        msg["From"] = user
+        msg["To"] = to_addr
+
+        server = smtplib.SMTP(host, port, timeout=15)
+        server.starttls()
+        server.login(user, pwd)
+        server.sendmail(user, [to_addr], msg.as_string())
+        server.quit()
+        return True
+    except Exception:
+        return False  # on reste silencieux côté UI (pas d'erreur bloquante)
 
 # ====== SCORING ======
 def compute_scores(responses: dict):
@@ -198,12 +244,19 @@ with tabs[0]:
         level = interpret_overall(total)
         spiral, hawkins, dab = map_spiral_hawkins_dabrowski(total)
         code = secrets.token_hex(3).upper()
+
         save_result(code, {
             "responses": responses, "scores_dim": scores_dim,
             "total": total, "max_total": max_total,
             "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab
         })
-        st.success(f"Résultats enregistrés avec le code **{code}** (à communiquer au praticien)")
+
+        # Email auto (silencieux si non configuré)
+        mailed = send_email_notification(code, total, level)
+        if mailed:
+            st.info("📧 Un email vous a été envoyé avec le code de récupération.")
+
+        st.success(f"Résultats enregistrés avec le code **{code}** (à communiquer au praticien).")
         pdf_buf = build_pdf(responses, scores_dim, max_dim, total, max_total, level, spiral, hawkins, dab)
         download_button_pdf(pdf_buf, filename=f"rapport_{code}.pdf")
 
@@ -255,4 +308,7 @@ if mode == "patient":
                 "total": total, "max_total": max_total,
                 "level": level, "spiral": spiral, "hawkins": hawkins, "dab": dab
             })
+            mailed = send_email_notification(code_from_link, total, level)
+            if mailed:
+                st.info("📧 Un email de notification a été envoyé au praticien.")
             st.success("Vos réponses ont été enregistrées. Merci ! Le praticien pourra les consulter avec votre code.")
